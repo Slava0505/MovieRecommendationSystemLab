@@ -1,11 +1,16 @@
 import logging
 import pickle
 
+import pandas as pd
 import numpy as np
 from sklearn.metrics import mean_squared_error
 
 import os
 
+from datetime import datetime
+from imp import reload
+reload(logging)
+logging.basicConfig(filename='app.log',level = logging.INFO, format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 class BaseRecommendationModel():
     """Baseline model that of the form mu + b_u + b_i,
     where mu is the overall average, b_u is a damped user
@@ -60,6 +65,43 @@ class BaseRecommendationModel():
         self.b_u = b_u
         self.b_i = b_i
         return self
+
+    def predict(self, user_id, m=5):
+        item_pred_rating = self.mu + self.b_u[user_id] + self.b_i
+        top_m_items = list(item_pred_rating.sort_values(ascending =False).iloc[:m].index())
+        return top_m_items
+
+    def train(self, filepath = 'data/ratings_train.dat'):
+        ratings_df = pd.read_csv(filepath, sep='::', header=None, 
+                                names=['userId', 'movieId', 'rating', 'timestamp'])
+        ratings_df['timestamp'] = ratings_df['timestamp'].apply(datetime.fromtimestamp)
+        ratings_df = ratings_df.sort_values('timestamp')
+        self.fit(ratings_df)
+        filename = 'model/{}.sav'.format(filepath.split('.')[0].split('/')[-1])
+        pickle.dump(model, open(filename, 'wb'))
+        logging.info("The model was trained and saved in a file {}".format(filename))
+
+    def evaluate(self, modelpath='model/ratings_train.sav',  filepath = 'data/ratings_test.dat'):
+
+        ratings_df = pd.read_csv(filepath, sep='::', header=None, 
+                                names=['userId', 'movieId', 'rating', 'timestamp'])
+        ratings_df['timestamp'] = ratings_df['timestamp'].apply(datetime.fromtimestamp)
+        ratings_df = ratings_df.sort_values('timestamp')
+
+        self.warmup(modelpath=modelpath)
+
+        pred = self.predict_df(ratings_df)
+        rmse = mean_squared_error(pred, ratings_df['rating'])**0.5
+
+        print("RMSE on eval set from {} = {}".format(filepath, rmse))
+        logging.info("RMSE on eval set from {} = {}".format(filepath, rmse))
+
+    def warmup(self, modelpath='model/ratings_train.sav'):
+        model = pickle.load(open(modelpath, 'rb'))
+        self.b_u = model.b_u      
+        self.b_i = model.b_i
+        self.mu = model.mu
+        logging.info("Model loaded from {}".format(modelpath))
 
     def predict_df(self, X):
         """Return rating predictions

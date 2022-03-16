@@ -66,4 +66,4 @@ def process():
             return make_response(jsonify({'result': '/3484eb2a-46be-4b55-b832-a260995480ee/' + result}), 200)
 
 if __name__ == "__main__":
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=4000, debug=True)
