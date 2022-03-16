@@ -3,7 +3,7 @@ version: "3"
 services:
     api:
         container_name: reccomendation_api
-        build: ./app
+        build: ./api
         command: gunicorn -b 0.0.0.0:4000 --workers=1 api:app --log-level=debug --capture-output --reload
         restart: on-failure
         volumes:
